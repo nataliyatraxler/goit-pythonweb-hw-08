@@ -27,4 +27,4 @@ class ContactResponse(ContactBase):
     id: int
 
     class Config:
-        from_attributes = True  # заменяет orm_mode в Pydantic v2
+        from_attributes = True  
