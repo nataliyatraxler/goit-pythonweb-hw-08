@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from app import models, schemas
 from fastapi import HTTPException
-
+from app import models, schemas
 
 def create_contact(db: Session, contact: schemas.ContactCreate):
     """Create and store a new contact in the database."""
@@ -24,10 +23,10 @@ def get_contact(db: Session, contact_id: int):
 
 
 def update_contact(db: Session, contact_id: int, contact_data: schemas.ContactUpdate):
-    """Update an existing contact."""
+    """Update an existing contact by ID."""
     contact = db.query(models.Contact).filter(models.Contact.id == contact_id).first()
     if not contact:
-        raise HTTPException(status_code=404, detail="Contact not found")
+        return None
 
     for key, value in contact_data.dict(exclude_unset=True).items():
         setattr(contact, key, value)
@@ -40,10 +39,10 @@ def delete_contact(db: Session, contact_id: int):
     """Delete a contact by ID."""
     contact = db.query(models.Contact).filter(models.Contact.id == contact_id).first()
     if not contact:
-        raise HTTPException(status_code=404, detail="Contact not found")
+        return None
     db.delete(contact)
     db.commit()
-    return {"message": "Contact deleted successfully"}
+    return True
 
 
 def search_contacts(db: Session, query: str):
@@ -56,7 +55,7 @@ def search_contacts(db: Session, query: str):
 
 
 def get_upcoming_birthdays(db: Session):
-    """Get contacts whose birthdays fall within the next 7 days."""
+    """Get contacts whose birthdays fall within the next 7 days, including leap year handling."""
     today = datetime.today().date()
     next_week = today + timedelta(days=7)
     contacts = db.query(models.Contact).all()
@@ -64,11 +63,12 @@ def get_upcoming_birthdays(db: Session):
     upcoming = []
     for contact in contacts:
         try:
-            birthday_this_year = contact.birthday.replace(year=today.year)
+            bday = contact.birthday.replace(year=today.year)
         except ValueError:
-            
-            birthday_this_year = contact.birthday.replace(year=today.year, day=28)
+            # Handle 29 February for non-leap years
+            bday = contact.birthday.replace(year=today.year, day=28)
 
-        if today <= birthday_this_year <= next_week:
+        if today <= bday <= next_week:
             upcoming.append(contact)
+
     return upcoming
